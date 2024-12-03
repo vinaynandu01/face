@@ -11,20 +11,27 @@ const Home = () => {
   const [prediction, setPrediction] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [loading, setLoading] = useState(false); // New loading state
   const [userList, setUserList] = useState([]);
   const [userCount, setUserCount] = useState(0);
-  const [userImage, setUserImage] = useState(null);
-  const username = location.state?.username;
   const [storedImage, setStoredImage] = useState(null);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [intervalId, setIntervalId] = useState(null);
+  const [attendanceList, setAttendanceList] = useState([]);
+
+  const username = location.state?.admin;
+
+  const isLoggedIn = localStorage.getItem("userLoggedIn");
 
   useEffect(() => {
+    if (!isLoggedIn || isLoggedIn === "false") {
+      navigate("/");
+    }
     const fetchStoredImage = async () => {
       try {
         const response = await axios.get(
           `http://localhost:5000/users/${username}/images`
         );
-        setStoredImage(response.data.stored_image); // Assuming the API returns a base64 image
+        setStoredImage(response.data.stored_image);
       } catch (error) {
         console.error("Failed to fetch stored image:", error);
       }
@@ -42,11 +49,7 @@ const Home = () => {
 
     fetchStoredImage();
     fetchUsers();
-
-    setUserImage(
-      location.state?.userImage || "path/to/default/profile/image.jpg"
-    );
-  }, [username, location.state]);
+  }, [username, navigate, isLoggedIn]);
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -54,23 +57,19 @@ const Home = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSelectedImage(reader.result);
-        setIsUploading(true);
+        setIsUploading(!isUploading);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const captureAndPredict = async () => {
-    const imageSrc = selectedImage
-      ? selectedImage
-      : webcamRef.current.getScreenshot();
+  const predictFromImage = async (imageSrc) => {
+    setPrediction(!prediction);
     const response = await fetch(imageSrc);
     const blob = await response.blob();
 
     const formData = new FormData();
-    formData.append("image", blob, "captured_image.jpg");
-
-    setLoading(true); // Start loading
+    formData.append("image", blob, "uploaded_image.jpg");
 
     try {
       const response = await axios.post(
@@ -78,14 +77,55 @@ const Home = () => {
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
-      setPrediction(response.data);
+      const results = response.data;
+
+      setPrediction(results);
+
+      results.forEach((result) => {
+        if (
+          !attendanceList.some(
+            (attendedUser) => attendedUser.name === result.name
+          )
+        ) {
+          setAttendanceList((prev) => [...prev, result]);
+        }
+      });
+
       setSelectedImage(null);
       setIsUploading(false);
     } catch (error) {
       console.error("Prediction failed:", error);
       setPrediction([{ name: "Error", probability: 0 }]);
-    } finally {
-      setLoading(false); // Stop loading
+    }
+  };
+
+  const captureAndPredict = async () => {
+    if (!webcamRef.current) {
+      console.error("Webcam is not available");
+      return;
+    }
+    const imageSrc = webcamRef.current.getScreenshot();
+    await predictFromImage(imageSrc);
+  };
+
+  const handlePredictButton = () => {
+    if (selectedImage) {
+      predictFromImage(selectedImage);
+    } else {
+      console.error("No image uploaded");
+    }
+  };
+
+  const handleToggleCamera = () => {
+    if (isCameraOn) {
+      clearInterval(intervalId);
+      setIsCameraOn(!isCameraOn);
+    } else {
+      setIsCameraOn(true);
+      const id = setInterval(() => {
+        captureAndPredict();
+      }, 2000);
+      setIntervalId(id);
     }
   };
 
@@ -93,80 +133,94 @@ const Home = () => {
     navigate("/display-images");
   };
 
+  const logoutfun = () => {
+    localStorage.setItem("userLoggedIn", "false");
+    localStorage.removeItem("username");
+    navigate("/login");
+  };
+
+  if (!isLoggedIn) {
+    navigate("/"); // Redirect if the user is not logged in
+    return null; // Prevent rendering the home page if not logged in
+  }
+
   return (
     <div className="d-flex">
       <div className="text-center flex-grow-1">
         <h2>Welcome, {username}</h2>
+        <div className="d-flex justify-content-center mb-3">
+          {isCameraOn && (
+            <Webcam
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              className="border p-2 rounded"
+              videoConstraints={{
+                width: 320,
+                height: 240,
+                facingMode: "user",
+              }}
+            />
+          )}
+        </div>
 
-        {/* Loading message during prediction */}
-        {loading ? (
-          <p
-            className="text-primary font-weight-bold my-3"
-            style={{ fontSize: "1.2em" }}
-          >
-            Loading... prediction is processing.
-          </p>
-        ) : (
-          <>
-            <div className="d-flex justify-content-center mb-3">
-              {!isUploading && (
-                <Webcam
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  className="border p-2 rounded"
-                  videoConstraints={{
-                    width: 320,
-                    height: 240,
-                    facingMode: "user",
-                  }}
-                />
-              )}
-            </div>
-            <div className="mb-3">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="form-control-file"
-              />
-            </div>
-            <button
-              onClick={captureAndPredict}
-              className="btn btn-success me-2"
-            >
-              {isUploading ? "Predict" : "Capture and Predict"}
-            </button>
-            <button
-              onClick={() => navigate("/register")}
-              className="btn btn-primary ms-2"
-            >
-              Register New User
-            </button>
-            <button
-              onClick={() => navigate("/login")}
-              className="btn btn-danger ms-2"
-            >
-              Log Out
-            </button>
-            <button
-              onClick={navigateToDisplayImages}
-              className="btn btn-info ms-2"
-            >
-              View User Images
-            </button>
+        <div className="mb-3">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="form-control-file"
+          />
+        </div>
 
-            {prediction.length > 0 && (
-              <div className="mt-3">
-                <p>Number of faces detected: {prediction.length}</p>
-                {prediction.map((result, index) => (
-                  <p key={index}>
-                    {result.name}: {(result.probability * 100).toFixed(2)}%
-                  </p>
-                ))}
-              </div>
-            )}
-          </>
+        <button
+          onClick={selectedImage ? handlePredictButton : captureAndPredict}
+          className="btn btn-success me-2"
+        >
+          {selectedImage ? "Predict" : "Capture and Predict"}
+        </button>
+
+        <button onClick={handleToggleCamera} className="btn btn-primary ms-2">
+          {isCameraOn ? "Turn Off Camera" : "Turn On Camera"}
+        </button>
+
+        <button
+          onClick={() => navigate("/register")}
+          className="btn btn-primary ms-2"
+        >
+          Register New User
+        </button>
+        <button onClick={logoutfun} className="btn btn-danger ms-2">
+          Log Out
+        </button>
+        <button onClick={navigateToDisplayImages} className="btn btn-info ms-2">
+          View User Images
+        </button>
+
+        {prediction.length > 0 && (
+          <div className="mt-3">
+            <p>Number of faces detected: {prediction.length}</p>
+            {prediction.map((result, index) => (
+              <p key={index}>
+                {result.name}: {(result.probability * 100).toFixed(2)}%
+              </p>
+            ))}
+          </div>
         )}
+
+        <div className="mt-3">
+          <h4>Attendance</h4>
+          {attendanceList.length > 0 ? (
+            <ul className="list-group">
+              {attendanceList.map((user, index) => (
+                <li key={index} className="list-group-item">
+                  {user.name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No users marked as present yet.</p>
+          )}
+        </div>
       </div>
 
       <div className="border rounded p-3 ms-3" style={{ width: "250px" }}>

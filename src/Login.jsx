@@ -1,18 +1,21 @@
 import React, { useRef, useState } from "react";
 import Webcam from "react-webcam";
+
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const Login = () => {
+  const location = useLocation();
   const webcamRef = useRef(null);
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
+  const rollnumber = location.state?.rollnumber;
+  console.log(rollnumber);
 
   // Function to capture image and verify it
   const captureAndVerify = async () => {
     const imageSrc = webcamRef.current.getScreenshot();
-
     if (!imageSrc) {
       setMessage("Failed to capture image. Please try again.");
       return;
@@ -25,17 +28,26 @@ const Login = () => {
 
     const formData = new FormData();
     formData.append("image", blob, "captured_image.jpg"); // Append blob
-
+    formData.append("rollnumber", rollnumber);
     try {
       const response = await axios.post(
         "http://localhost:5000/recognize",
         formData
       );
       const result = response.data;
+      const uname = result[0]["name`"];
 
       // Check for recognized faces
-      if (result.length && result[0].name !== "Unknown") {
-        navigate("/home", { state: { username: result[0].name } });
+      console.log(result);
+      if (uname !== "Unknown") {
+        console.log(uname);
+        localStorage.setItem("userLoggedIn", "true"); // Mark user as logged in
+        localStorage.setItem("username", uname);
+        if (uname === "RAPAKA VINAY") {
+          navigate("/home", { state: { admin: uname } });
+        } else {
+          navigate("/user", { state: { result: result } });
+        }
       } else {
         setMessage("Face not recognized.");
       }
@@ -54,7 +66,7 @@ const Login = () => {
     <div
       className="text-center"
       style={{
-        maxWidth: "400px",
+        maxWidth: "600px",
         margin: "auto",
         boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)",
         padding: "20px",
@@ -66,7 +78,7 @@ const Login = () => {
         <Webcam
           ref={webcamRef}
           screenshotFormat="image/jpeg"
-          style={{ width: "100%", maxWidth: "500px", height: "auto" }}
+          style={{ width: "100%", maxWidth: "800px", height: "auto" }}
           className="mb-3"
         />
       </div>
