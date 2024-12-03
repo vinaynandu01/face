@@ -88,6 +88,7 @@ def register():
     fathername = request.form["FatherName"]
     phoneno = request.form["phoneNumber"]
     embeddings = []
+    cnn_embeddings = []
     stored_image = None  # To store the first grayscale image
 
     for i in range(5):  # Assume 5 images are uploaded
@@ -107,7 +108,12 @@ def register():
             
             # Convert cropped face to RGB
             rgb_face = cv2.cvtColor(cropped_face, cv2.COLOR_BGR2RGB)
+            
             embedding = embedder.embeddings(np.expand_dims(rgb_face, axis=0)).flatten()
+            gray_face = cv2.cvtColor(cropped_face, cv2.COLOR_BGR2GRAY).reshape(160, 160, 1)
+            normalized_face = gray_face / 255.0 
+            cnn_embedding = cnn_model.predict(np.expand_dims(normalized_face, axis=0)).flatten()
+            cnn_embeddings.append(cnn_embedding)
             embeddings.append(embedding)
 
             # Save the first grayscale face as base64 for later retrieval
@@ -121,8 +127,8 @@ def register():
         return jsonify({"error": "No valid faces detected in the uploaded images"}), 400
 
     # Calculate the mean embedding from the 5 images
-    mean_embedding = np.mean(np.array(embeddings), axis=0).astype(float).tolist()
-
+    mean_FaceNet_embedding = np.mean(np.array(embeddings), axis=0).astype(float).tolist()
+    Mean_CNN_embedding = np.mean(np.array(cnn_embeddings), axis=0).astype(float).tolist()
 
     # Create the user data structure
     id = len(face_data)+1
@@ -131,14 +137,15 @@ def register():
         'username': username,
         'FatherName':fathername,
         'phoneNumber':phoneno,
-        'embeddings': mean_embedding,  # Store the mean of 5 embeddings
+        'embeddings': mean_FaceNet_embedding,
+        'CNN_embeddings': Mean_CNN_embedding,# Store the mean of 5 embeddings
         'stored_image': stored_image,  
         'id':id# Base64 of the first grayscale image
     }
 
     # Insert into MongoDB
     mongo.db.data.insert_one(user_data)
-    mongo.db.attendance.insert_one({"username":username,"id":id})
+    mongo.db.attendance1.insert_one({"username":username,"id":id})
 
     # Reload embeddings after new user registration
     reload_embeddings()
@@ -290,7 +297,7 @@ def get_user_attendance(username):
         return jsonify({"error": "User not found"}), 404
 
     # Fetch the attendance data for the user
-    attendance = mongo.db.attendance.find_one({'username': username}, {'_id': 0, 'username': 0,"id":0})
+    attendance = mongo.db.attendance1.find_one({'username': username}, {'_id': 0, 'username': 0,"id":0})
     if attendance is None:
         return jsonify({"error": "No attendance data found"}), 404
 
@@ -306,7 +313,7 @@ def reload_embeddings_route():
 
 @app.route('/attendance',methods=['GET'])
 def get_attendance():
-    records = list(mongo.db.attendance.find({}, {"_id": 0}))
+    records = list(mongo.db.attendance1.find({}, {"_id": 0}))
     return jsonify({"attendance": records})
 
 
