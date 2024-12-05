@@ -26,7 +26,7 @@ const User = () => {
         const response = await axios.get(
           `http://localhost:5000/users/${username}/images`
         );
-        setStoredImage(response.data.stored_image);
+        setStoredImage(response.data["details"]["stored_image"]);
       } catch (error) {
         console.error("Failed to fetch stored image:", error);
       }
@@ -97,7 +97,7 @@ const User = () => {
   const logoutfun = () => {
     localStorage.setItem("userLoggedIn", "false");
     localStorage.removeItem("username");
-    navigate("/login");
+    navigate("/QRscanner");
   };
 
   if (!isLoggedIn) {
@@ -130,12 +130,10 @@ const User = () => {
               Log Out
             </button>
             <button
-              onClick={() => {
-                navigate("/crowd");
-              }}
-              className="btn btn-primary ms-2"
+              onClick={navigate("/display-images")}
+              className="btn btn-info ms-2"
             >
-              Crowd Analysis
+              View User details
             </button>
 
             {prediction.length > 0 && (

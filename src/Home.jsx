@@ -16,10 +16,11 @@ const Home = () => {
   const [storedImage, setStoredImage] = useState(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [intervalId, setIntervalId] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
   const [attendanceList, setAttendanceList] = useState([]);
 
   const username = location.state?.admin;
-
+  console.log(username);
   const isLoggedIn = localStorage.getItem("userLoggedIn");
 
   useEffect(() => {
@@ -31,7 +32,7 @@ const Home = () => {
         const response = await axios.get(
           `http://localhost:5000/users/${username}/images`
         );
-        setStoredImage(response.data.stored_image);
+        setStoredImage(response.data["details"]["stored_image"]);
       } catch (error) {
         console.error("Failed to fetch stored image:", error);
       }
@@ -64,6 +65,7 @@ const Home = () => {
   };
 
   const predictFromImage = async (imageSrc) => {
+    setIsRunning(true);
     setPrediction(!prediction);
     const response = await fetch(imageSrc);
     const blob = await response.blob();
@@ -90,12 +92,13 @@ const Home = () => {
           setAttendanceList((prev) => [...prev, result]);
         }
       });
-
-      setSelectedImage(null);
-      setIsUploading(false);
     } catch (error) {
       console.error("Prediction failed:", error);
       setPrediction([{ name: "Error", probability: 0 }]);
+    } finally {
+      setIsRunning(false);
+      setSelectedImage(null);
+      setIsUploading(false);
     }
   };
 
@@ -136,7 +139,7 @@ const Home = () => {
   const logoutfun = () => {
     localStorage.setItem("userLoggedIn", "false");
     localStorage.removeItem("username");
-    navigate("/login");
+    navigate("/QRscanner");
   };
 
   if (!isLoggedIn) {
@@ -147,7 +150,7 @@ const Home = () => {
   return (
     <div className="d-flex">
       <div className="text-center flex-grow-1">
-        <h2>Welcome, {username}</h2>
+        <h2>Welcome, vinay</h2>
         <div className="d-flex justify-content-center mb-3">
           {isCameraOn && (
             <Webcam
@@ -172,30 +175,21 @@ const Home = () => {
           />
         </div>
 
-        <button
-          onClick={selectedImage ? handlePredictButton : captureAndPredict}
-          className="btn btn-success me-2"
-        >
-          {selectedImage ? "Predict" : "Capture and Predict"}
+        <button onClick={handlePredictButton} className="btn btn-success me-2">
+          {selectedImage ? "Predict" : "upload image"}
         </button>
 
         <button onClick={handleToggleCamera} className="btn btn-primary ms-2">
           {isCameraOn ? "Turn Off Camera" : "Turn On Camera"}
         </button>
 
-        <button
-          onClick={() => navigate("/register")}
-          className="btn btn-primary ms-2"
-        >
-          Register New User
-        </button>
         <button onClick={logoutfun} className="btn btn-danger ms-2">
           Log Out
         </button>
         <button onClick={navigateToDisplayImages} className="btn btn-info ms-2">
-          View User Images
+          View User details
         </button>
-
+        <h4>{isRunning ? "processing may take a minute..." : " "}</h4>
         {prediction.length > 0 && (
           <div className="mt-3">
             <p>Number of faces detected: {prediction.length}</p>

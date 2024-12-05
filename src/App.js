@@ -9,11 +9,12 @@ import Attendence from "./attendence";
 import QrCodeScanner from "./QrCodeScanner";
 import ProtectedRoute from "./ProtectedRoute"; // Import the ProtectedRoute component
 import User from "./user";
+import CNN from "./CNN";
 
 function App() {
   const uname = localStorage.getItem("username");
   const Navbar = () => {
-    if (uname === "RAPAKA VINAY") {
+    if (uname === "23BD1A056D") {
       return (
         <nav
           className="navbar navbar-expand-lg fixed-top"
@@ -60,6 +61,9 @@ function App() {
               <a className="nav-link text-white" href="/register">
                 Register
               </a>
+              <a className="nav-link text-white" href="/CNN-Login">
+                CNN login
+              </a>
             </div>
           </div>
         </nav>
@@ -72,10 +76,10 @@ function App() {
 
       <div className="container" style={{ paddingTop: "80px" }}>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<QrCodeScanner />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
+          <Route path="/CNN-login" element={<CNN />} />
           {/* Use ProtectedRoute for the routes that require login */}
           <Route path="/home" element={<ProtectedRoute element={<Home />} />} />
           <Route

@@ -1,52 +1,68 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Webcam from "react-webcam";
-
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const Login = () => {
   const location = useLocation();
-  const webcamRef = useRef(null);
   const navigate = useNavigate();
+  const webcamRef = useRef(null);
   const [message, setMessage] = useState("");
-  const rollnumber = location.state?.rollnumber;
-  console.log(rollnumber);
+  const [process, setProcess] = useState(true);
+  const [rollnumber, setRollnumber] = useState("");
+
+  // Set rollnumber from location.state if provided
+  useEffect(() => {
+    if (location.state?.rollnumber) {
+      setRollnumber(location.state.rollnumber);
+    }
+  }, [location.state]);
 
   // Function to capture image and verify it
   const captureAndVerify = async () => {
+    setProcess(false); // Disable button
+    setMessage(""); // Clear previous messages
+
     const imageSrc = webcamRef.current.getScreenshot();
     if (!imageSrc) {
       setMessage("Failed to capture image. Please try again.");
+      setProcess(true);
       return;
     }
 
-    const responseData = imageSrc.split(",")[1]; // Get base64 data
-    const blob = await fetch(`data:image/jpeg;base64,${responseData}`).then(
-      (res) => res.blob()
-    );
-
-    const formData = new FormData();
-    formData.append("image", blob, "captured_image.jpg"); // Append blob
-    formData.append("rollnumber", rollnumber);
     try {
+      // Convert base64 image to Blob
+      const responseData = imageSrc.split(",")[1]; // Extract base64 part
+      const blob = await fetch(`data:image/jpeg;base64,${responseData}`).then(
+        (res) => res.blob()
+      );
+
+      // Prepare form data
+      const formData = new FormData();
+      formData.append("image", blob, "captured_image.jpg");
+      formData.append("rollnumber", rollnumber);
+
+      // Make API call
       const response = await axios.post(
-        "http://localhost:5000/recognize",
+        "http://localhost:5000/login",
         formData
       );
       const result = response.data;
-      const uname = result[0]["name`"];
 
-      // Check for recognized faces
+      // Process the response
       console.log(result);
+      const uname = result["name"];
+      console.log(uname);
       if (uname !== "Unknown") {
-        console.log(uname);
         localStorage.setItem("userLoggedIn", "true"); // Mark user as logged in
         localStorage.setItem("username", uname);
-        if (uname === "RAPAKA VINAY") {
+
+        // Navigate based on user type
+        if (uname === "23BD1A056D") {
           navigate("/home", { state: { admin: uname } });
         } else {
-          navigate("/user", { state: { result: result } });
+          navigate("/user", { state: { result } });
         }
       } else {
         setMessage("Face not recognized.");
@@ -54,11 +70,12 @@ const Login = () => {
     } catch (error) {
       console.error("Verification failed:", error);
       if (error.response) {
-        // Server responded with a status other than 200
         setMessage("Server error: " + error.response.data.error);
       } else {
         setMessage("Network error. Please check your connection.");
       }
+    } finally {
+      setProcess(true); // Enable button
     }
   };
 
@@ -74,6 +91,7 @@ const Login = () => {
       }}
     >
       <h2 className="my-4">Login with Face Recognition</h2>
+
       <div style={{ width: "80%", margin: "0 auto" }}>
         <Webcam
           ref={webcamRef}
@@ -82,9 +100,23 @@ const Login = () => {
           className="mb-3"
         />
       </div>
-      <button onClick={captureAndVerify} className="btn btn-primary">
-        Capture and Verify
+
+      <input
+        type="text"
+        placeholder="Enter Roll Number"
+        value={rollnumber}
+        onChange={(e) => setRollnumber(e.target.value)}
+        className="form-control mb-3"
+      />
+
+      <button
+        onClick={captureAndVerify}
+        className="btn btn-primary"
+        disabled={!process}
+      >
+        {process ? "Capture and Verify" : "Processing..."}
       </button>
+
       <p className="mt-2 text-danger">{message}</p>
     </div>
   );

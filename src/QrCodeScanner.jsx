@@ -36,6 +36,7 @@ const QrCodeScanner = () => {
   return (
     <div className="container vh-120 d-flex flex-column justify-content-center align-items-center bg-light">
       <h1 className="text-center mb-4">QR Code Scanner</h1>
+      <h4>please place the ID card to scan qr code to proceed to login</h4>
 
       <div className="card shadow p-3 mb-4 w-100" style={{ maxWidth: "600px" }}>
         <div className="card-body">

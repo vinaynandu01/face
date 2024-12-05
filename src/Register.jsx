@@ -3,6 +3,7 @@ import Webcam from "react-webcam";
 import QrScanner from "react-qr-scanner";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { Navigate } from "react-router-dom";
 
 const Register = () => {
   const webcamRef = useRef(null);
@@ -10,6 +11,7 @@ const Register = () => {
   const [capturedImages, setCapturedImages] = useState([]);
   const [isCapturing, setIsCapturing] = useState(false); // Loading state
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(true);
   const [isScannerOpen, setIsScannerOpen] = useState(false); // Toggle QR scanner visibility
 
   // To parse the decoded QR data
@@ -75,12 +77,15 @@ const Register = () => {
     });
 
     try {
+      setSuccess(!success);
       await axios.post("http://localhost:5000/register", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
+      setSuccess(!success);
       alert("User registered successfully!");
+      Navigate("/QRscanner");
     } catch (error) {
       console.error("Failed to register user:", error);
     }
@@ -128,7 +133,7 @@ const Register = () => {
           className="btn btn-success"
           disabled={isCapturing || capturedImages.length === 0 || !decodedText}
         >
-          Register User
+          {success ? "Register User" : "Process may take a minute"}
         </button>
         {isCapturing && (
           <div className="mt-3">Capturing images, please wait...</div>
@@ -238,13 +243,13 @@ const Register = () => {
         <h4>Instructions for Capturing Images</h4>
         <p>
           Please ensure that you are in a well-lit environment to capture clear
-          images. The system will capture 7 images, so please remain still
-          during the process. Ensure your face is centered and visible within
-          the camera view.
+          images.please remain still during the process. After or before
+          capturing images <b> besure to scan QR code</b> to proceed with the
+          process.(as it is required for your details)
         </p>
         <p>
           After capturing the images, the system will automatically register the
-          user. You can also scan a QR code for user identification.
+          user and navigate to login page.
         </p>
       </div>
     </div>
