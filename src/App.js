@@ -37,8 +37,8 @@ function App() {
               <a className="nav-link text-white" href="/crowd-analysis">
                 Crowd Count
               </a>
-              <a className="nav-link text-white" href="/QRscanner">
-                QR Scanner
+              <a className="nav-link text-white" href="/CNN-login">
+                Custom CNN
               </a>
             </div>
           </div>
@@ -55,7 +55,7 @@ function App() {
               Face Recognition KMIT
             </a>
             <div className="navbar-nav ml-auto">
-              <a className="nav-link text-white" href="/QRscanner">
+              <a className="nav-link text-white" href="/login">
                 Login
               </a>
               <a className="nav-link text-white" href="/register">
@@ -76,7 +76,7 @@ function App() {
 
       <div className="container" style={{ paddingTop: "80px" }}>
         <Routes>
-          <Route path="/" element={<QrCodeScanner />} />
+          <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/CNN-login" element={<CNN />} />
